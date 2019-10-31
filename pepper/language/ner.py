@@ -41,7 +41,8 @@ class NER(object):
 
     def _start_server(self, classifier):
 
-        CREATE_NO_WINDOW = 0x08000000
+        # Prevent Command Line to Pop Up for Windows Systems
+        CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 
         self._ner_server_process = subprocess.Popen([
             'java', '-cp', os.path.join(NER.ROOT, 'stanford-ner.jar'), 'edu.stanford.nlp.ie.NERServer',
