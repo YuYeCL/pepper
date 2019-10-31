@@ -10,7 +10,7 @@ class POS(object):
     STANFORD_POS = os.path.join(PACKAGE_ROOT, 'language', 'stanford-pos')
     STANFORD_POS_JAR = os.path.join(STANFORD_POS, 'stanford-postagger.jar')
     STANFORD_POS_TAGGER = os.path.join(STANFORD_POS, 'models/english-bidirectional-distsim.tagger')
-    
+
     def __init__(self):
         self._log = logger.getChild(self.__class__.__name__)
         self._tagger = StanfordPOSTagger(POS.STANFORD_POS_TAGGER, path_to_jar=POS.STANFORD_POS_JAR)

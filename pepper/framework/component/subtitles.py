@@ -5,7 +5,7 @@ from pepper.framework.component import ContextComponent, TextToSpeechComponent, 
 from pepper.language import Utterance
 from pepper import config
 
-import urllib
+from urllib.parse import quote
 import re
 
 from threading import Timer
@@ -48,7 +48,7 @@ class SubtitlesComponent(AbstractComponent):
         if self._subtitles_timeout_timer: self._subtitles_timeout_timer.cancel()
 
         # Show Subtitles
-        text_websafe = urllib.quote(''.join([i for i in re.sub(r'\\\\\S+\\\\', "", text) if ord(i) < 128]))
+        text_websafe = quote(''.join([i for i in re.sub(r'\\\\\S+\\\\', "", text) if ord(i) < 128]))
         self.backend.tablet.show(self.SUBTITLES_URL.format(text_websafe))
 
         # Start Timeout Timer

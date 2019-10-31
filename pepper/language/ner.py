@@ -40,10 +40,13 @@ class NER(object):
         self._ner_server_process.kill()
 
     def _start_server(self, classifier):
+
+        CREATE_NO_WINDOW = 0x08000000
+
         self._ner_server_process = subprocess.Popen([
             'java', '-cp', os.path.join(NER.ROOT, 'stanford-ner.jar'), 'edu.stanford.nlp.ie.NERServer',
             '-port', str(self._port), '-loadClassifier', os.path.join(NER.ROOT, classifier)],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, creationflags=CREATE_NO_WINDOW)
         with self._ner_server_process.stdout:
             self._log_subprocess_output(self._ner_server_process.stdout)
 
