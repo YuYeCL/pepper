@@ -6,7 +6,7 @@ from pepper import config
 HOWTO
 
 1. (Re)Start Docker
-2. Start Object Detection pepper_tensorflow/pepper_tensorflow/object_detection.py
+2. Start Object Detection pepper_tensorflow/object_detection.py
 3. Start This script!
 
 """

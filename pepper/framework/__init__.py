@@ -27,7 +27,7 @@ The framework.sensor package implements Face, Object and Speech Recognition:
 
 - :class:`~pepper.framework.sensor.vad.VAD` implements Voice Activity Detection on Microphone input
 - :class:`~pepper.framework.sensor.asr.StreamedGoogleASR` implements Automated Speech Recognition through Google Speech API
-- :class:`~pepper.framework.sensor.obj.ObjectDetectionClient` connects to pepper_tensorflow_ for Object Detection
+- :class:`~pepper.framework.sensor.obj.ObjectDetectionClient` connects to pepper_tensorflow for Object Detection
 - :class:`~pepper.framework.sensor.face.OpenFace` connects to the `bamos/openface` Docker container for Face Recognition
 - :class:`~pepper.framework.sensor.location.Location` gets the current geographical location (WIP)
 
@@ -40,7 +40,7 @@ which expose various methods and events to applications. They're summarized belo
 - :class:`~pepper.framework.component.camera.CameraComponent` exposes the :meth:`~pepper.framework.component.camera.CameraComponent.on_image` event.
 - :class:`~pepper.framework.component.microphone.MicrophoneComponent` exposes the :meth:`~pepper.framework.component.microphone.MicrophoneComponent.on_audio` event.
 - :class:`~pepper.framework.component.speech_recognition.SpeechRecognitionComponent` exposes the :meth:`~pepper.framework.component.speech_recognition.SpeechRecognitionComponent.on_transcript` event.
-- :class:`~pepper.framework.component.object_detection.ObjectDetectionComponent` exposes the :meth:`~pepper.framework.component.object_detection.ObjectDetectionComponent.on_object` event.
+- :class:`~pepper.framework.component.object_detection.ObjectDetectionComponent` exposes the :meth:`~pepper.framework.component.pepper_tensorflow.ObjectDetectionComponent.on_object` event.
 - :class:`~pepper.framework.component.face_detection.FaceRecognitionComponent` exposes the :meth:`~pepper.framework.component.face_detection.FaceRecognitionComponent.on_face`, :meth:`~pepper.framework.component.face_detection.FaceRecognitionComponentComponent.on_face_known` & :meth:`~pepper.framework.component.face_detection.FaceRecognitionComponent.on_face_new` events.
 - :class:`~pepper.framework.component.text_to_speech.TextToSpeechComponent` exposes the :meth:`~pepper.framework.component.text_to_speech.TextToSpeechComponent.say` method.
 - :class:`~pepper.framework.component.brain.BrainComponent` exposes :class:`pepper.brain.long_term_memory.LongTermMemory` to the application.
@@ -51,8 +51,6 @@ Some Components are more complex and require other components to work. They will
 - :class:`~pepper.framework.component.statistics.StatisticsComponent` displays realtime system statistics in the command line.
 - :class:`~pepper.framework.component.scene.SceneComponent` creates a 3D scatterplot of the visible space.
 - :class:`~pepper.framework.component.display.display.DisplayComponent` shows the live camera feedback and the 3D view of the current space, including the objects that are observed.
-
-.. _pepper_tensorflow: https://github.com/cltl/pepper_tensorflow
 """
 
 from .abstract import *
