@@ -96,6 +96,7 @@ class Entity(RDFBase):
         super(Entity, self).__init__(id, label, offset, confidence)
 
         self._types = [t for t in types if t != '' and t is not None]
+        self._types = list(dict.fromkeys(self._types))
 
     @property
     def types(self):
@@ -165,7 +166,7 @@ class Predicate(RDFBase):
         # type: () -> int
         return self._cardinality
 
-    def casefold(self, subject, object, format='triple'):
+    def casefold(self, subject, complement, format='triple'):
         # type (str) -> ()
         """
         Format the labels to match triples or natural language
@@ -180,22 +181,22 @@ class Predicate(RDFBase):
 
         subject_label = subject.label if subject is not None and subject.label not in ['', Literal('')] else (
             subject.types if subject is not None else '?')
-        object_label = object.label if object is not None and object.label not in ['', Literal('')] else (
-            object.types if object is not None else '?')
+        complement_label = complement.label if complement is not None and complement.label not in ['', Literal('')] else (
+            complement.types if complement is not None else '?')
 
         if format == 'triple':
             # Label
             self._label = Literal(self.label.lower().replace(" ", "-"))
             self._label = Literal(
-                self._fix_predicate_morphology(subject_label, str(self.label), object_label, format=format))
+                self._fix_predicate_morphology(subject_label, str(self.label), complement_label, format=format))
 
         elif format == 'natural':
             # Label
             self._label = self.label.lower().replace("-", " ")
-            self._label = self._fix_predicate_morphology(subject_label, self.label, object_label, format=format)
+            self._label = self._fix_predicate_morphology(subject_label, self.label, complement_label, format=format)
 
     @staticmethod
-    def _fix_predicate_morphology(subject, predicate, object, format='triple'):
+    def _fix_predicate_morphology(subject, predicate, complement, format='triple'):
         """
         Conjugation
         Parameters
@@ -242,7 +243,7 @@ class Predicate(RDFBase):
 
 
 class Triple(object):
-    def __init__(self, subject, predicate, object):
+    def __init__(self, subject, predicate, complement):
         # type: (Entity, Predicate, Entity) -> None
         """
         Construct Triple Object
@@ -252,13 +253,13 @@ class Triple(object):
             Instance that is the subject of the information just received
         predicate: Predicate
             Predicate of the information just received
-        object: Entity
-            Instance that is the object of the information just received
+        complement: Entity
+            Instance that is the complement of the information just received
         """
 
         self._subject = subject
         self._predicate = predicate
-        self._object = object
+        self._complement = complement
 
     @property
     def subject(self):
@@ -271,9 +272,9 @@ class Triple(object):
         return self._predicate
 
     @property
-    def object(self):
+    def complement(self):
         # type: () -> Entity
-        return self._object
+        return self._complement
 
     @property
     def subject_name(self):
@@ -286,9 +287,9 @@ class Triple(object):
         return self._predicate.label if self._predicate is not None else None
 
     @property
-    def object_name(self):
+    def complement_name(self):
         # type: () -> str
-        return self._object.label if self._object is not None else None
+        return self._complement.label if self._complement is not None else None
 
     @property
     def subject_types(self):
@@ -296,9 +297,9 @@ class Triple(object):
         return self._subject.types_names if self._subject is not None else None
 
     @property
-    def object_types(self):
+    def complement_types(self):
         # type: () -> str
-        return self._object.types_names if self._object is not None else None
+        return self._complement.types_names if self._complement is not None else None
 
     # TODO not good practice and not used, might think of deleting three setters below
     def set_subject(self, subject):
@@ -309,9 +310,9 @@ class Triple(object):
         # type: (Predicate) -> ()
         self._predicate = predicate
 
-    def set_object(self, object):
+    def set_complement(self, complement):
         # type: (Entity) -> ()
-        self._object = object
+        self._complement = complement
 
     def casefold(self, format='triple'):
         # type (str) -> ()
@@ -326,11 +327,11 @@ class Triple(object):
 
         """
         self._subject.casefold(format)
-        self._object.casefold(format)
-        self._predicate.casefold(self.subject, self.object, format)
+        self._complement.casefold(format)
+        self._predicate.casefold(self.subject, self.complement, format)
 
     def __iter__(self):
-        return iter([('subject', self.subject), ('predicate', self.predicate), ('object', self.object)])
+        return iter([('subject', self.subject), ('predicate', self.predicate), ('complement', self.complement)])
 
     def __repr__(self):
         return '{} [{}])'.format(hash_claim_id([self.subject_name
@@ -339,19 +340,19 @@ class Triple(object):
                                                 self.predicate_name
                                                 if self.predicate_name is not None
                                                    and self.predicate_name not in ['', Literal('')] else '?',
-                                                self.object_name
-                                                if self.object_name is not None
-                                                   and self.object_name not in ['', Literal('')] else '?']),
+                                                self.complement_name
+                                                if self.complement_name is not None
+                                                   and self.complement_name not in ['', Literal('')] else '?']),
                                  hash_claim_id([self.subject_types if self.subject_types is not None else '?',
                                                 '->',
-                                                self.object_types if self.object_types is not None else '?']))
+                                                self.complement_types if self.complement_types is not None else '?']))
 
 
 class Perspective(object):
     def __init__(self, certainty, polarity, sentiment, time=None, emotion=None):
         # type: (float, int, float, Time, Emotion) -> None
         """
-        Construct Perspective object
+        Construct Perspective Object
         Parameters
         ----------
         certainty: float
@@ -461,7 +462,7 @@ class CardinalityConflict(object):
             Information about what the conflicting information is about
         """
         self._provenance = provenance
-        self._object = entity
+        self._complement = entity
 
     @property
     def provenance(self):
@@ -469,9 +470,9 @@ class CardinalityConflict(object):
         return self._provenance
 
     @property
-    def object(self):
+    def complement(self):
         # type: () -> Entity
-        return self._object
+        return self._complement
 
     @property
     def author(self):
@@ -484,9 +485,9 @@ class CardinalityConflict(object):
         return self._provenance.date
 
     @property
-    def object_name(self):
+    def complement_name(self):
         # type: () -> str
-        return self._object.label
+        return self._complement.label
 
     def casefold(self, format='triple'):
         # type (str) -> ()
@@ -501,10 +502,10 @@ class CardinalityConflict(object):
 
         """
         self._provenance.casefold(format)
-        self._object.casefold(format)
+        self._complement.casefold(format)
 
     def __repr__(self):
-        return '{} about {}'.format(self._provenance.__repr__(), self.object_name)
+        return '{} about {}'.format(self._provenance.__repr__(), self.complement_name)
 
 
 class NegationConflict(object):
@@ -610,7 +611,7 @@ class StatementNovelty(object):
 
 
 class EntityNovelty(object):
-    def __init__(self, existence_subject, existence_object):
+    def __init__(self, existence_subject, existence_complement):
         # type: (bool, bool) -> None
         """
         Construct EntityNovelty Object
@@ -618,11 +619,11 @@ class EntityNovelty(object):
         ----------
         existence_subject: bool
             Truth value for determining if this subject is something new
-        existence_object: bool
-            Truth value for determining if this object is something new
+        existence_complement: bool
+            Truth value for determining if this complement is something new
         """
         self._subject = not existence_subject
-        self._object = not existence_object
+        self._complement = not existence_complement
 
     @property
     def subject(self):
@@ -630,12 +631,12 @@ class EntityNovelty(object):
         return self._subject
 
     @property
-    def object(self):
+    def complement(self):
         # type: () -> bool
-        return self._object
+        return self._complement
 
     def __repr__(self):
-        return '{} - {}'.format(self.subject, self.object)
+        return '{} - {}'.format(self.subject, self.complement)
 
 
 class Gap(object):
@@ -698,7 +699,7 @@ class Gap(object):
 
 
 class Gaps(object):
-    def __init__(self, subject_gaps, object_gaps):
+    def __init__(self, subject_gaps, complement_gaps):
         # type: (List[Gap], List[Gap]) -> None
         """
         Construct Gap Object
@@ -706,21 +707,21 @@ class Gaps(object):
         ----------
         subject_gaps: List[Gap]
             List of gaps with potential things to learn about the original subject
-        object_gaps: List[Gap]
-            List of gaps with potential things to learn about the original object
+        complement_gaps: List[Gap]
+            List of gaps with potential things to learn about the original complement
         """
         self._subject = subject_gaps
-        self._object = object_gaps
-
-    @property
-    def object(self):
-        # type: () -> List[Gap]
-        return self._subject
+        self._complement = complement_gaps
 
     @property
     def subject(self):
         # type: () -> List[Gap]
-        return self._object
+        return self._subject
+
+    @property
+    def complement(self):
+        # type: () -> List[Gap]
+        return self._complement
 
     def casefold(self, format='triple'):
         # type (str) -> ()
@@ -736,12 +737,12 @@ class Gaps(object):
         """
         for g in self._subject:
             g.casefold(format)
-        for g in self._object:
+        for g in self._complement:
             g.casefold(format)
 
     def __repr__(self):
         s = random.choice(self._subject) if self._subject else ''
-        o = random.choice(self._object) if self._object else ''
+        o = random.choice(self._complement) if self._complement else ''
         return '{} - {}'.format(s.__repr__(), o.__repr__())
 
 
@@ -808,7 +809,7 @@ class Overlap(object):
 
 
 class Overlaps(object):
-    def __init__(self, subject_overlaps, object_overlaps):
+    def __init__(self, subject_overlaps, complement_overlaps):
         # type: (List[Overlap], List[Overlap]) -> None
         """
         Construct Overlap Object
@@ -816,11 +817,11 @@ class Overlaps(object):
         ----------
         subject_overlaps: List[Overlap]
             List of overlaps shared with original subject
-        object_overlaps: List[Overlap]
-            List of overlaps shared with original object
+        complement_overlaps: List[Overlap]
+            List of overlaps shared with original complement
         """
         self._subject = subject_overlaps
-        self._object = object_overlaps
+        self._complement = complement_overlaps
 
     @property
     def subject(self):
@@ -828,9 +829,9 @@ class Overlaps(object):
         return self._subject
 
     @property
-    def object(self):
+    def complement(self):
         # type: () -> List[Overlap]
-        return self._object
+        return self._complement
 
     def casefold(self, format='triple'):
         # type (str) -> ()
@@ -846,21 +847,21 @@ class Overlaps(object):
         """
         for g in self._subject:
             g.casefold(format)
-        for g in self._object:
+        for g in self._complement:
             g.casefold(format)
 
     def __repr__(self):
         s = random.choice(self._subject) if self._subject else ''
-        o = random.choice(self._object) if self._object else ''
+        o = random.choice(self._complement) if self._complement else ''
         return '{} - {}'.format(s.__repr__(), o.__repr__())
 
 
 class Thoughts(object):
-    def __init__(self, statement_novelty, entity_novelty, negation_conflicts, object_conflict,
-                 subject_gaps, object_gaps, overlaps, trust):
+    def __init__(self, statement_novelty, entity_novelty, negation_conflicts, complement_conflict,
+                 subject_gaps, complement_gaps, overlaps, trust):
         # type: (List[StatementNovelty], EntityNovelty, List[NegationConflict], List[CardinalityConflict], Gaps, Gaps, Overlaps, float) -> None
         """
-        Construct Thoughts object
+        Construct Thoughts Object
         Parameters
         ----------
         statement_novelty: List[StatementNovelty]
@@ -869,12 +870,12 @@ class Thoughts(object):
             Information if the entities involved are novel
         negation_conflicts: Optional[List[NegationConflict]]
             Information regarding conflicts of opposing statements heard
-        object_conflict: List[CardinalityConflict]
+        complement_conflict: List[CardinalityConflict]
             Information regarding conflicts by violating one to one predicates
         subject_gaps: Gaps
             Information about what can be learned of the subject
-        object_gaps: Gaps
-            Information about what can be learned of the object
+        complement_gaps_gaps: Gaps
+            Information about what can be learned of the complement
         overlaps: Overlaps
             Information regarding overlaps of this statement with things heard so far
         trust: float
@@ -884,15 +885,15 @@ class Thoughts(object):
         self._statement_novelty = statement_novelty
         self._entity_novelty = entity_novelty
         self._negation_conflicts = negation_conflicts
-        self._object_conflict = object_conflict
+        self._complement_conflict = complement_conflict
         self._subject_gaps = subject_gaps
-        self._object_gaps = object_gaps
+        self._complement_gaps = complement_gaps
         self._overlaps = overlaps
         self._trust = trust
 
-    def object_conflict(self):
+    def complement_conflicts(self):
         # type: () -> List[CardinalityConflict]
-        return self._object_conflict
+        return self._complement_conflict
 
     def negation_conflicts(self):
         # type: () -> List[NegationConflict]
@@ -906,9 +907,9 @@ class Thoughts(object):
         # type: () -> EntityNovelty
         return self._entity_novelty
 
-    def object_gaps(self):
+    def complement_gaps(self):
         # type: () -> Gaps
-        return self._object_gaps
+        return self._complement_gaps
 
     def subject_gaps(self):
         # type: () -> Gaps
@@ -938,16 +939,17 @@ class Thoughts(object):
             n.casefold(format)
         for c in self._negation_conflicts:
             c.casefold(format)
-        for c in self._object_conflict:
+        for c in self._complement_conflict:
             c.casefold(format)
         self._subject_gaps.casefold(format)
-        self._object_gaps.casefold(format)
+        self._complement_gaps.casefold(format)
         self._overlaps.casefold(format)
 
     def __repr__(self):
         representation = {'statement_novelty': self._statement_novelty, 'entity_novelty': self._entity_novelty,
-                          'negation_conflicts': self._negation_conflicts, 'object_conflict': self._object_conflict,
-                          'subject_gaps': self._subject_gaps, 'object_gaps': self._object_gaps,
+                          'negation_conflicts': self._negation_conflicts,
+                          'complement_conflict': self._complement_conflict,
+                          'subject_gaps': self._subject_gaps, 'complement_gaps': self._complement_gaps,
                           'overlaps': self._overlaps}
 
         return '{}'.format(representation)
