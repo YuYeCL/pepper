@@ -12,27 +12,19 @@ SPEAKER_NAME_THIRD = "Dear patient"
 SPEAKER_NAME = "Dear patient"
 SPEAKER_FACE = "HUMAN"
 DEFAULT_SPEAKER = "Human"
-NAME="knee k"
-NAME="Sigmund Freud"
-
-LOCATION_NAME = "Weesp, Herensingel 168"
-
-IMAGE_VU = "https://www.vu.nl/nl/Images/VUlogo_NL_Wit_HR_RGB_tcm289-201376.png"
-IMAGE_SELENE = "http://wordpress.let.vupr.nl/understandinglanguagebymachines/files/2019/06/7982_02_34_Selene_Orange_Unsharp_Robot_90kb.jpg"
-IMAGE_LENKA = "http://wordpress.let.vupr.nl/understandinglanguagebymachines/files/2019/06/8249_Lenka_Word_Object_Reference_106kb.jpg"
-IMAGE_BRAM = "http://makerobotstalk.nl/files/2018/12/41500612_1859783920753781_2612366973928996864_n.jpg"
-IMAGE_PIEK = "http://www.cltl.nl/files/2019/10/8025_Classroom_Piek.jpg"
+NAME = "Sigmund Freud"
 
 MIN_ANSWER_LENGTH = 4
 # Override Speech Speed for added clarity!
 config.NAOQI_SPEECH_SPEED = 80
 
-images=[1,2,3,4,5,6,7,8,9,10]
 
 class ElizaApplication(AbstractApplication,         # Every Application Inherits from AbstractApplication
                            StatisticsComponent,         # Displays Performance Statistics in Terminal
                            SpeechRecognitionComponent,  # Enables Speech Recognition and the self.on_transcript event
                            TextToSpeechComponent):      # Enables Text to Speech and the self.say method
+
+    SUBTITLES_URL = "https://bramkraai.github.io/subtitle?text={}"
 
 
     def __init__(self, application):
@@ -43,6 +35,12 @@ class ElizaApplication(AbstractApplication,         # Every Application Inherits
 
         IntroductionIntention(self).speech()
         sleep(2.5)
+
+
+    def show_text(self, text):
+        text_websafe = text
+        # text_websafe = urllib.quote(''.join([i for i in re.sub(r'\\\\\S+\\\\', "", text) if ord(i) < 128]))
+        self.backend.tablet.show(self.SUBTITLES_URL.format(text_websafe))
 
     def on_transcript(self, hypotheses, audio):
         """
@@ -58,31 +56,19 @@ class ElizaApplication(AbstractApplication,         # Every Application Inherits
         """
 
         # Choose first ASRHypothesis and interpret as question
-        answer=""
         for h in hypotheses:
-
             question = h.transcript
-
-            answer = eliza.analyzefirst(question)
-
-            if answer:
-                # Tell Answer to Human
-                self.say(answer)
-
-            if answer=="really?":
-                self.say("Look at the next situation in your life and tell me what you feel", animations.BOW)
-
-            if answer:
-                break
-
-        if answer=="Let me see....":
-            question = hypotheses[0].transcript
+            self.show_text(question)
 
             answer = eliza.analyze(question)
 
             if answer:
+                print("You said:", question)
                 # Tell Answer to Human
+                self.show_text(answer)
                 self.say(answer)
+                break
+
 
 
 
@@ -93,10 +79,11 @@ class IntroductionIntention(AbstractIntention, ElizaApplication):
 
     def speech(self):
         # 1.1 - Welcome
-        self.say("Hello knee k. Welcome to my clinic", animations.BOW)
+        self.say("Hello. Welcome to my clinic", animations.BOW)
         self.say("My name is "+NAME)
         self.say("I am your best friend and personal therapist", animations.MODEST)
         self.say("How do you feel today?", animations.FRIENDLY)
+        sleep(3.5)
 
 
 
