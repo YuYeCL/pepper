@@ -1,6 +1,6 @@
 from pepper.framework import *
 from pepper.responder import *
-from pepper.responder.topic import BrexitResponder
+from pepper.responder.topic import TopicResponder
 from pepper.knowledge import sentences, animations
 from pepper.language import Utterance
 from pepper.language.generation.reply import reply_to_question
@@ -13,12 +13,20 @@ from time import time
 import urllib
 import re
 
-SPEAKER_NAME_THIRD = "Her Majesty"
-SPEAKER_NAME = "Your Majesty"
-SPEAKER_FACE = "Her Majesty"
+SPEAKER_NAME_THIRD = "Dear guest"
+SPEAKER_NAME = "Dear guest"
+SPEAKER_FACE = "HUMAN"
 DEFAULT_SPEAKER = "Human"
+TOPIC_NAME = "De Vrije Wereld to discuss robots and humans"
+#TOPIC_ROBOT_THOUGHT="The students at the VU that created me, come from all over the world... "
+#                 "International exchange and collaboration is key to: innovation, success, "
+#                 "and the spread of knowledge and democratic values... "
+#                 "Brexit is not helping us with this... "
+#                 "Europe is the beginning, the Universe is our goal... ..."
 
-LOCATION_NAME = "Royal Netherlands Academy of Arts and Sciences"
+TOPIC_ROBOT_THOUGHT="Humans and robots should work together in teams. Use each others strength and compensate for weaknesses."
+
+LOCATION_NAME = "The botanical winter garden"
 VU_NAME_PHONETIC = r"\\toi=lhp\\ fraiE universitai_t Amster_dam \\toi=orth\\"
 
 IMAGE_VU = "https://www.vu.nl/nl/Images/VUlogo_NL_Wit_HR_RGB_tcm289-201376.png"
@@ -27,20 +35,18 @@ IMAGE_LENKA = "http://wordpress.let.vupr.nl/understandinglanguagebymachines/file
 IMAGE_BRAM = "http://makerobotstalk.nl/files/2018/12/41500612_1859783920753781_2612366973928996864_n.jpg"
 IMAGE_PIEK = "http://www.cltl.nl/files/2019/10/8025_Classroom_Piek.jpg"
 
-
-BREXIT_QUESTION = "What do you think are the implications of the Brexit for scientists?"
-BREXIT_ANSWER = "Do you have a question for me?"
+TOPIC_QUERY="robot"
+TOPIC_QUESTION = "How do you think humans and robots will work together?"
+TOPIC_ANSWER = "Do you have a question for me?"
 MIN_ANSWER_LENGTH = 4
-
 
 # Override Speech Speed for added clarity!
 config.NAOQI_SPEECH_SPEED = 80
 
-
 RESPONDERS = [
     BrainResponder(),
     VisionResponder(), PreviousUtteranceResponder(), IdentityResponder(), LocationResponder(), TimeResponder(),
-    QnAResponder(), BrexitResponder(),
+    QnAResponder(), TopicResponder(),
     GreetingResponder(), GoodbyeResponder(), ThanksResponder(), AffirmationResponder(), NegationResponder(),
     UnknownResponder()
 ]
@@ -50,7 +56,6 @@ class HMKApp(AbstractApplication, StatisticsComponent,
              BrainComponent, ContextComponent,
              ObjectDetectionComponent, FaceRecognitionComponent,
              SpeechRecognitionComponent, TextToSpeechComponent):
-
     SUBTITLES_URL = "https://bramkraai.github.io/subtitle?text={}"
 
     def __init__(self, backend):
@@ -63,23 +68,35 @@ class HMKApp(AbstractApplication, StatisticsComponent,
         sleep(1.5)
 
     def show_text(self, text):
-        text_websafe = urllib.quote(''.join([i for i in re.sub(r'\\\\\S+\\\\', "", text) if ord(i) < 128]))
+        text_websafe=text
+        #text_websafe = urllib.quote(''.join([i for i in re.sub(r'\\\\\S+\\\\', "", text) if ord(i) < 128]))
         self.backend.tablet.show(self.SUBTITLES_URL.format(text_websafe))
 
 
-class WaitForStartCueIntention(AbstractIntention, HMKApp):
 
+class WaitForStartCueIntention(AbstractIntention, HMKApp):
     START_CUE_TEXT = [
-        "she's here",
-        "she is here",
-        "the queen is here",
+        "hello",
+        "hallo",
+        "hi",
+        "morning",
+        "evening",
+        "afternoon",
+        "hoi",
+        "who are you",
+        "a guest arrived",
         "you may begin",
         "you may start",
         "you can begin",
         "you can start"
     ]
 
+    GREET_TIMEOUT = 15  # Only Greet people once every X seconds
+
     def __init__(self, application):
+        """Greets New and Known People"""
+        self.name_time = {}  # Dictionary of <name, time> pairs, to keep track of who is greeted when
+
         super(WaitForStartCueIntention, self).__init__(application)
 
         # Initialize Response Picker
@@ -88,9 +105,52 @@ class WaitForStartCueIntention(AbstractIntention, HMKApp):
         # Start Chat with Default Speaker
         self.context.start_chat(DEFAULT_SPEAKER)
 
+
+    def on_face_known(self, faces):
+        """
+        On Person Event.
+        Called every time a known face is detected.
+        """
+
+        print(faces)
+
+        for person in faces:
+            if self.is_greeting_appropriate(person.name):
+                self.say("Hello, {}!".format(person.name))
+
+    def on_face_new(self, faces):
+        """
+        On New Person Event.
+        Called every time an unknown face is detected.
+        """
+
+        if self.is_greeting_appropriate("new"):
+            self.say("I see a new person!, Hello stranger!")
+
+    def is_greeting_appropriate(self, name):
+        """Returns True if greeting is appropriate and updates Greeting Time"""
+
+        # Appropriateness arises when
+        #  1. person hasn't been seen before, or
+        #  2. enough time has passed since last sighting
+        if name not in self.name_time or (time() - self.name_time[name]) > self.GREET_TIMEOUT:
+
+            # Store last seen time (right now) in name_time dictionary
+            self.name_time[name] = time()
+
+            # Return "Appropriate"
+            return True
+
+        # Return "Not Appropriate"
+        return False
+
     def on_face(self, faces):
         # If Start Face Cue is observed by Leolani -> Start Main Intention
-        if any([face.name == SPEAKER_FACE for face in faces]):
+        #if any([face.name == SPEAKER_FACE for face in faces]):
+        if self.is_greeting_appropriate("new"):
+            self.say("I see a new person!, Hello stranger!")
+        if len(faces)==0:
+       # if any([on_face_new(self, face) for face in faces]):
             self.say("Ah, I can see {}! Let me begin!".format(SPEAKER_NAME_THIRD))
             IntroductionIntention(self.application)
 
@@ -117,60 +177,58 @@ class IntroductionIntention(AbstractIntention, HMKApp):
         # Start Speech
         Thread(target=self.speech).start()
 
-
     def speech(self):
 
         # 1.1 - Welcome
         self.say("Hello {}. Welcome to the {}. ...".format(SPEAKER_NAME, LOCATION_NAME), animations.BOW)
-        self.say("We are honoured to have you here!")
+        self.say("We are thrilled to have you here!")
 
         # 1.2 - Introduction
         self.say(r"I am Leolani... My name means \\vct=50\\ Voice of an Angel \\vct=100\\. in Hawaiian.", animations.I)
         self.say("I am built by students from the VU that come from all over the world. ", animations.ONCE_UPON_A_TIME)
         self.tablet.show(IMAGE_SELENE)
-        self.say("Selene, from Mexico, designed my brain and thoughts!", animations.TABLET)
+        #self.say("Selene, from Mexico, designed my brain and thoughts!", animations.TABLET)
         self.tablet.show(IMAGE_LENKA)
-        self.say("Lenka, from Serbia, taught me to understand language", animations.TABLET)
+        #self.say("Lenka, from Serbia, taught me to understand language", animations.TABLET)
         self.tablet.show(IMAGE_BRAM)
-        self.say("Bram, from the Netherlands, programmed me to perceive the world around me.", animations.TABLET)
+        #self.say("Bram, from the Netherlands, programmed me to perceive the world around me.", animations.TABLET)
         self.tablet.show(IMAGE_PIEK)
-        self.say("Peek, from the Netherlands, and I, from France and Japan, work on identity, reference and perspective in language!", animations.TABLET)
+        #self.say(
+        #    "Peek, from the Netherlands, and I, from France and Japan, work on identity, reference and perspective in language!",
+        #    animations.TABLET)
         self.tablet.show(IMAGE_VU)
 
         sleep(2.5)
 
-        # 2.1 - Brexit Introduction
-        self.say("I believe you are here to talk about the implications of the Brexit for scientists", animations.THINK)
+        # 2.1 - Topic Introduction
+        self.say("I believe you are here for "+TOPIC_NAME, animations.THINK)
         self.say("I am just a robot, but I have my little robot thoughts...", animations.SHY)
-        self.say("The students at the VU that created me, come from all over the world... "
-                 "International exchange and collaboration is key to: innovation, success, "
-                 "and the spread of knowledge and democratic values... "
-                 "Brexit is not helping us with this... "
-                 "Europe is the beginning, the Universe is our goal... ...")
+        self.say(TOPIC_ROBOT_THOUGHT)
 
-        # 2.2 - Brexit Knowledge
-        self.say("As a robot, I have learned a few things about the Brexit myself!", animations.THINK)
+        # 2.2 - Topic Knowledge
+        self.say("As a robot, I have learned a few things about "+TOPIC_QUERY+ " myself!", animations.THINK)
 
-        # 2.2.1 - Brexit in the News
+        # 2.2.1 - Topic in the News
         self.say("I have been reading the news lately!")
-        self.say(choice(sentences.BREXIT_NEWS))
+        self.say(choice(sentences.TOPIC_NEWS))
         self.say("{}!".format(choice(sentences.HAPPY)), animations.HAPPY)
 
-        # 2.2.2 - Brexit in Brain
-        self.say("I also have been talking about the Brexit with my friends!")
-        self.brexit_in_brain()
+        # 2.2.2 - Topic in Brain
+        self.say("I also have been talking about "+TOPIC_NAME+ " with my friends!")
+        self.topic_in_brain()
 
         self.say("I learn a lot from my friends!")
 
         sleep(2.5)
 
-        # Move to Brexit QnA
-        BrexitQuestionIntention(self.application)
+        # Move to Topic QnA
+        TopicQuestionIntention(self.application)
 
-    def brexit_in_brain(self):
-        self.answer_brain_query("what is the brexit about")
-        self.answer_brain_query("what is the brexit")
-        self.answer_brain_query("what is the brexit in")
+
+
+    def topic_in_brain(self):
+        self.answer_brain_query("what is "+TOPIC_QUERY+" about")
+        self.answer_brain_query("what is "+TOPIC_QUERY+" ")
 
     def answer_brain_query(self, query):
         try:
@@ -184,10 +242,10 @@ class IntroductionIntention(AbstractIntention, HMKApp):
             self.log.error(e)
 
 
-# 2.3 - Brexit Question
-class BrexitQuestionIntention(AbstractIntention, HMKApp):
+# 2.3 - Topic Question
+class TopicQuestionIntention(AbstractIntention, HMKApp):
     def __init__(self, application):
-        super(BrexitQuestionIntention, self).__init__(application)
+        super(TopicQuestionIntention, self).__init__(application)
 
         # Initialize Response Picker
         self.response_picker = ResponsePicker(self, RESPONDERS)
@@ -198,10 +256,10 @@ class BrexitQuestionIntention(AbstractIntention, HMKApp):
         if not self.context.chatting:
             self.context.start_chat(SPEAKER_NAME)
 
-        # Ask Brexit Question
-        self.say("Oh {}, I think I have a question for you!".format(SPEAKER_NAME), animations.EXPLAIN)
-        self.show_text(BREXIT_QUESTION)
-        self.say(BREXIT_QUESTION)
+        # Ask Topic Question
+        self.say("Oh {}, I think I have a question for you!".format(SPEAKER_NAME, animations.EXPLAIN))
+        self.show_text(TOPIC_QUESTION)
+        self.say(TOPIC_QUESTION)
 
     def on_chat_turn(self, utterance):
         responder = self.response_picker.respond(utterance)
@@ -213,18 +271,18 @@ class BrexitQuestionIntention(AbstractIntention, HMKApp):
         if isinstance(responder, UnknownResponder) and len(utterance.tokens) < MIN_ANSWER_LENGTH and not self._retried:
             # -> Repeat Question
             self._retried = True
-            self.say("But, {}".format(BREXIT_QUESTION))
-        else: # If a decent response can be formed
-            # -> Thank Speaker and Move on to BrexitAnswerIntention
+            self.say("But, {}".format(TOPIC_QUESTION))
+        else:  # If a decent response can be formed
+            # -> Thank Speaker and Move on to TopicAnswerIntention
             self.say("Thank you for your answer!", animations.HAPPY)
             self.tablet.show(IMAGE_VU)
-            BrexitAnswerIntention(self.application)
+            TopicAnswerIntention(self.application)
 
 
-# 2.4 - Brexit Answer
-class BrexitAnswerIntention(AbstractIntention, HMKApp):
+# 2.4 - Topic Answer
+class TopicAnswerIntention(AbstractIntention, HMKApp):
     def __init__(self, application):
-        super(BrexitAnswerIntention, self).__init__(application)
+        super(TopicAnswerIntention, self).__init__(application)
 
         # Initialize Response Picker
         self.response_picker = ResponsePicker(self, RESPONDERS)
@@ -235,8 +293,8 @@ class BrexitAnswerIntention(AbstractIntention, HMKApp):
         if not self.context.chatting:
             self.context.start_chat(SPEAKER_NAME)
 
-        self.show_text(BREXIT_ANSWER)
-        self.say(BREXIT_ANSWER)
+        self.show_text(TOPIC_ANSWER)
+        self.say(TOPIC_ANSWER)
 
     def on_chat_turn(self, utterance):
         responder = self.response_picker.respond(utterance)
@@ -248,7 +306,7 @@ class BrexitAnswerIntention(AbstractIntention, HMKApp):
         if isinstance(responder, UnknownResponder) and len(utterance.tokens) < MIN_ANSWER_LENGTH and not self._retried:
             # -> Repeat Question
             self._retried = True
-            self.say("But, {}".format(BREXIT_ANSWER))
+            self.say("But, {}".format(TOPIC_ANSWER))
         else:  # If a decent response can be formed
             # -> Thank Speaker and Move on to OutroIntention
             self.say("Thank you!", animations.HAPPY)
@@ -275,21 +333,21 @@ class OutroIntention(AbstractIntention, HMKApp):
             len([obj for obj in self.context.objects if obj.name == "person"])), animations.HELLO)
 
         # 5.2 - Goodbye
-        self.say("It's a pity the King is not here. Please say hello to him and your daughters for me.", animations.FRIENDLY)
+        self.say("It's a pity we could not talk more and get to know each other.",
+                 animations.FRIENDLY)
         self.say("It was nice having talked to you, {}! ... ...".format(SPEAKER_NAME), animations.BOW)
 
         self.say("If you have any questions, you can always ask me later!")
 
         sleep(4)
 
-        self.say("I believe it is now time for a group picture! I love pictures!", animations.HAPPY)
+        self.say("You may make a selfie with me! I love pictures!", animations.HAPPY)
 
         # Switch to Default Intention
         DefaultIntention(self.application)
 
 
 class DefaultIntention(AbstractIntention, HMKApp):
-
     IGNORE_TIMEOUT = 60
 
     def __init__(self, application):
@@ -318,7 +376,6 @@ class DefaultIntention(AbstractIntention, HMKApp):
 
 
 if __name__ == '__main__':
-
     # Initialize Application
     application = HMKApp(config.get_backend())
 
