@@ -77,6 +77,7 @@ class HMKApp(AbstractApplication, StatisticsComponent,
 class WaitForStartCueIntention(AbstractIntention, HMKApp):
     START_CUE_TEXT = [
         "hello",
+        "hallo",
         "hi",
         "morning",
         "evening",
@@ -156,7 +157,8 @@ class WaitForStartCueIntention(AbstractIntention, HMKApp):
         #         #     IntroductionIntention(self.application)
 
         # Changed to this
-        if len(faces) ==0:
+        if len(faces) ==0 :
+       # if any([on_face_new(self, face) for face in faces]):
             self.say("Ah, I can see {}! Let me begin!".format(SPEAKER_NAME_THIRD))
             IntroductionIntention(self.application)
 
